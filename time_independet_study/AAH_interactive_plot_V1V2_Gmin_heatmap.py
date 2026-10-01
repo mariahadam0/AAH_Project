@@ -1,12 +1,63 @@
-"""
-Local desktop UI (tkinter + matplotlib): G_min(V1, V2) and phi_0(V1, V2) heatmaps.
-
-Needs AAH_model.py, AAH_tools.py and the updated AAH_tid_functions.py (with
-GminPhi0Map / _gmin_row) in the same folder. Run with python or your IDE's Run button.
-
-G_min : minimal gap |E[lvl_i+1] - E[lvl_i]|/t over the phason angle phi
-phi_0 : phason angle at which that minimum occurs
-"""
+# =============================================================================
+# README
+# =============================================================================
+# AAH chain: G_min(V1, V2) and phi_0(V1, V2) heatmaps
+#
+# WHAT IT DOES
+#   Opens a local window that maps,
+#   over a grid of (V1, V2) values for a finite Aubry-Andre-Harper (AAH) chain,
+#   two quantities that depend on the phason angle phi:
+#     - G_min(V1, V2): the minimal gap |E[lvl_i+1] - E[lvl_i]| / t between two
+#                      neighbouring energy levels, minimised over phi
+#                      (left heatmap)
+#     - phi_0(V1, V2): the value of phi at which that minimum occurs
+#                      (right heatmap, colour bar labelled in multiples of pi)
+#   For every (V1, V2) point, phi is first scanned coarsely (N_PHI points) and
+#   the minimum is then refined, using AAH_tid_functions._gmin_row.
+#
+# REQUIREMENTS
+#   - Python 3 with tkinter, numpy and matplotlib installed
+#   - The following files in the SAME folder as this script:
+#       AAH_model.py, AAH_tools.py and the UPDATED AAH_tid_functions.py
+#       (it must contain GminPhi0Map, _gmin_row and GminMapFilename)
+#
+# HOW TO RUN
+#   Run this file with Python (e.g. `python <this_file>.py`) or with your IDE's
+#   Run button, from the folder that contains the files above.
+#
+# HOW TO USE
+#   1. Fill in the parameters in the left panel:
+#        N       chain length (integer, >= 4)
+#        theta   phason offset in radians
+#        lvl_i   index of the lower level of the pair (0 <= lvl_i <= N - 2);
+#                the gap is taken between lvl_i and lvl_i + 1 (shown under the
+#                fields)
+#   2. Optionally tick "LOG_GMIN" to show G_min on a logarithmic colour scale
+#      (this can be toggled after the calculation without recomputing).
+#   3. Press "Calculate" (or the Enter key). The progress bar and status text
+#      show how many rows of the grid are done. "Cancel" aborts a running
+#      calculation.
+#   4. Inspect the plots. The toolbar below them allows zooming, panning and
+#      saving the figure as an image.
+#
+# SETTINGS IN THE CODE (not in the UI)
+#   V_MIN, V_MAX   range of both V1 and V2 (default 0 to 2)
+#   N_V1, N_V2     grid resolution along V1 and V2 (default 81 x 81)
+#   N_PHI          number of points in the coarse phi scan per grid point
+#   T_HOP          hopping amplitude t (default 1.0)
+#   N_WORKERS      number of worker processes (None = all CPU cores)
+#   DATA_PATH      folder where results are cached (default "data/Gmin_phi0")
+#
+# NOTES
+#   - The calculation is parallelised over rows of V2 with multiple processes
+#     and can take a few minutes for fine grids or large N.
+#   - Results are saved as .npz files in DATA_PATH. If a file matching the
+#     current N, theta, lvl_i, grid, N_PHI and t already exists, it is loaded
+#     instead of recomputed. Change any of those settings to force a new
+#     calculation, or delete the file.
+#   - Invalid input is reported in a pop-up dialog; calculation errors are also
+#     shown in a pop-up.
+# =============================================================================
 import os
 import sys
 import queue
