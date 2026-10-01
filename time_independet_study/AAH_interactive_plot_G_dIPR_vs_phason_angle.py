@@ -1,8 +1,50 @@
-"""
-Local desktop UI (tkinter + matplotlib) for G(phi) and dIPR(phi) of the AAH chain.
-No Streamlit / browser needed. Run with python or your IDE's Run button, from the
-folder containing AAH_model.py, AAH_tools.py and AAH_tid_functions.py.
-"""
+# =============================================================================
+# README
+# =============================================================================
+# AAH chain: G(phi) and dIPR(phi)
+#
+# WHAT IT DOES
+#   Opens a local window in which you
+#   can compute and plot two quantities for a finite Aubry-André-Harper (AAH)
+#   chain as a function of the phase phi, for phi in [0, 2*pi]:
+#     - G(phi):    left plot, computed between two neighbouring energy levels
+#                  (lvl_i and lvl_j = lvl_i + 1) with AAH_tid_functions.G_Phi
+#     - dIPR(phi): right plot, computed for level lvl_j with
+#                  AAH_tid_functions.dIPR_Phi
+#   The energy spectrum versus phi is obtained first with
+#   AAH_tid_functions.EnergyPhiSpectrum, and G(phi) is built from it.
+#
+# REQUIREMENTS
+#   - Python 3 with tkinter, numpy and matplotlib installed
+#   - The following files in the SAME folder as this script:
+#       AAH_model.py, AAH_tools.py, AAH_tid_functions.py
+#
+# HOW TO RUN
+#   Run this file with Python (e.g. `python <this_file>.py`) or with your IDE's
+#   Run button, from the folder that contains the files above.
+#
+# HOW TO USE
+#   1. Fill in the parameters in the left panel:
+#        N       chain length (integer, >= 4)
+#        V1      on-site modulation strength
+#        V2      hopping modulation strength
+#        theta   phason offset in radians
+#        lvl_i   index of the lower level of the pair (0 <= lvl_i <= N - 2);
+#                the partner level is lvl_j = lvl_i + 1 (shown under the fields)
+#        phi points   number of phi values in [0, 2*pi] (integer, >= 10)
+#   2. Press "Calculate" (or the Enter key). The calculation runs in a
+#      background thread, so the window stays responsive; the status text under
+#      the button shows "Calculating...", "Done." or "Error.".
+#   3. Inspect the plots. The toolbar below them allows zooming, panning and
+#      saving the figure as an image. The x-axis is labelled in multiples of pi.
+#
+# NOTES
+#   - The hopping amplitude is fixed to t = 1.0, so G is shown as G/t.
+#   - Invalid input (non-numeric values, out-of-range levels, etc.) is reported
+#     in a pop-up dialog; calculation errors are also shown in a pop-up.
+# =============================================================================
+
+
 import os
 import sys
 import threading
