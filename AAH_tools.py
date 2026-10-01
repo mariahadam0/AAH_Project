@@ -1,5 +1,5 @@
 import numpy as np
-from AAH import AAH_model as aah
+import AAH_model as aah
 
 
 def density_of_states_over_phason(N: int, V1: float, V2: float, phi_lin: list, t: float = 1, k: float = 0,
