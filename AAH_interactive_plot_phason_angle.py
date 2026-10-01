@@ -37,7 +37,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import TextBox, Button, Slider
 
-from AAH import AAH_model as aah_model
+import AAH_model as aah_model
 import AAH_tools as aah_tools
 
 
