@@ -1,13 +1,3 @@
-"""
-Time-independent functions to study the GAAH parameter space.
-
-Sections:
-    - Spectrum, G(phi), dIPR(phi) and probability density versus phason angle
-    - Heatmaps over V1 / V2 and over (theta, phi)
-    - G_min(V1, V2) and phi_0(V1, V2) maps
-    - Number of local extrema of G(phi) and E(phi)
-    - Number of gap closings
-"""
 import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,10 +10,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from scipy.optimize import minimize_scalar
 from scipy.signal import find_peaks
 
+'''
+Time-independent functions to study GAAH parameter space.
 
-# ----------------------------------------------------------------------
-# Spectrum, G(phi), dIPR(phi) and probability density
-# ----------------------------------------------------------------------
+'''
 def EnergyPhiSpectrum(N: int, V1: float, V2: float, phi_lin: np.ndarray, t: float = 1, theta: float = 0.0,
                       data_path: str = "data", filename: str = None, save = False)-> tuple[np.ndarray,np.ndarray]:
     """
@@ -32,16 +22,13 @@ def EnergyPhiSpectrum(N: int, V1: float, V2: float, phi_lin: np.ndarray, t: floa
     Parameters:
     - N (int): Number of lattice sites in the chain.
     - V1 (float): Amplitude of the on-site potential.
-    - V2 (float): Amplitude of the hopping potential.
+    - V2 (float): Amplitude of the opping potential.
     - phi_lin (np.ndarray): Array of phason angles (phi) to iterate over.
     - t (float): Hopping between neighboring sites (default is 1).
     - theta (float): Phase offset parameter (default is 0.0).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is False).
-
-    Returns:
-    - energies (np.ndarray), angles (np.ndarray, in units of pi)
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
     energies = []
     angles = []
@@ -79,7 +66,7 @@ def G_Phi(energies: np.ndarray, angles: np.ndarray, level_i: int, level_j: int,
     N: int, V1: float, V2: float, theta: float = 0.0, t: float = 1,
     data_path: str = "data", filename: str = None, save = False)->tuple[np.ndarray,np.ndarray]:
     """
-    Calculates the energy gap between two energy levels across the phason angle spectrum.
+    Calculates the energy gap between two energy levels across phason angles spectrum.
 
     Parameters:
     - energies (np.ndarray): Array of energy eigenvalues across phason angles.
@@ -88,15 +75,12 @@ def G_Phi(energies: np.ndarray, angles: np.ndarray, level_i: int, level_j: int,
     - level_j (int): Index of the second energy level.
     - N (int): Number of lattice sites in the chain.
     - V1 (float): Amplitude of the on-site potential.
-    - V2 (float): Amplitude of the hopping potential.
+    - V2 (float): Amplitude of the opping potential.
     - theta (float): Phase offset parameter (default is 0.0).
-    - t (float): Hopping between neighboring sites (default is 1).
+    - t (float): Hopping between neighboring sites  (default is 1).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is False).
-
-    Returns:
-    - G (np.ndarray), angles (np.ndarray)
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
     G = []
 
@@ -130,12 +114,12 @@ def G_Phi(energies: np.ndarray, angles: np.ndarray, level_i: int, level_j: int,
 def dIPR_Phi(N: int, V1: float, V2: float, phi_lin: np.ndarray, level_i: int, t: float = 1, theta: float = 0.0,
              dparameter: float = 0.3, data_path: str = "data", filename: str = None, save=False) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates the directional Inverse Participation Ratio (dIPR) of one energy level across the phason angle spectrum.
+    Calculates the directional Inverse Participation Ratio (dIPR) for a specific energy level across phason angle spectrum.
 
     Parameters:
     - N (int): Number of lattice sites in the chain.
     - V1 (float): Amplitude of the on-site potential.
-    - V2 (float): Amplitude of the hopping potential.
+    - V2 (float): Amplitude of the opping potential.
     - phi_lin (np.ndarray): Array of phason angles (phi) to iterate over.
     - level_i (int): Index of the eigenstate/energy level.
     - t (float): Hopping between neighboring sites (default is 1).
@@ -143,18 +127,16 @@ def dIPR_Phi(N: int, V1: float, V2: float, phi_lin: np.ndarray, level_i: int, t:
     - dparameter (float): Parameter for the dIPR calculation (default is 0.3).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is False).
-
-    Returns:
-    - dIPR (np.ndarray), angles (np.ndarray)
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
+
     dIPR_list = []
     angles = []
 
     for i in range(len(phi_lin)):
         AAH = aah.AAH_chain(N=N, t=t, V1=V1, V2=V2, theta=theta, phi=phi_lin[i])
         AAH.diagonalize()
-        dipr = AAH.dIPR(dparameter=dparameter)
+        dipr = AAH.dIPR(dparameter=dparameter)  # shape (N,), one value per eigenstate[cite: 1]
         dIPR_list.append(dipr[level_i])
         angles.append(AAH.phi / np.pi)
 
@@ -183,22 +165,19 @@ def dIPR_Phi(N: int, V1: float, V2: float, phi_lin: np.ndarray, level_i: int, t:
 def ProbabilityDensityPhiSpectrum(N, V1, V2, phi_lin, level_i, t=1.0, theta=0.0,
                                   data_path="data", filename=None, save=True):
     """
-    Calculates the probability density across sites for one level over the phason angle spectrum.
+    Calculates the probability density distribution across sites for a specific level over phason angle spectrum.
 
     Parameters:
     - N (int): Number of lattice sites in the chain.
     - V1 (float): Amplitude of the on-site potential.
-    - V2 (float): Amplitude of the hopping potential.
+    - V2 (float): Amplitude of the opping potential.
     - phi_lin (np.ndarray): Array of phason angles (phi) to iterate over.
     - level_i (int): Index of the eigenstate/energy level.
     - t (float): Hopping between neighboring sites (default is 1).
     - theta (float): Phase offset parameter (default is 0.0).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is True).
-
-    Returns:
-    - prob_density (np.ndarray, shape (len(phi_lin), N)), angles (np.ndarray)
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
     prob_density_list = []
     angles = []
@@ -206,11 +185,11 @@ def ProbabilityDensityPhiSpectrum(N, V1, V2, phi_lin, level_i, t=1.0, theta=0.0,
     for p in phi_lin:
         AAH = aah.AAH_chain(N=N, t=t, V1=V1, V2=V2, theta=theta, phi=p)
         AAH.diagonalize()
-        prob = AAH.probability_density()
+        prob = AAH.probability_density()  # shape (num_states, N)
         prob_density_list.append(prob[level_i])
         angles.append(AAH.phi / np.pi)
 
-    prob_density_arr = np.array(prob_density_list)
+    prob_density_arr = np.array(prob_density_list)  # shape (len(phi_lin), N)
     angles = np.array(angles)
 
     if save:
@@ -236,13 +215,10 @@ def ProbabilityDensityPhiSpectrum(N, V1, V2, phi_lin, level_i, t=1.0, theta=0.0,
     return prob_density_arr, angles
 
 
-# ----------------------------------------------------------------------
-# Heatmaps over V1 / V2 and over (theta, phi)
-# ----------------------------------------------------------------------
 def GPhiHeatmapData(N, phi_lin, level_i, level_j, V1=None, V2=None, V=None,
                      t=1.0, theta=0.0, data_path='data', filename=None, save=True):
     """
-    Generates heatmap data for the energy gap G as a function of phason angle and potential V1/V2.
+    Generates heatmap data for energy gaps (G) as a function of phason angle and potential V1/V2.
 
     Parameters:
     - N (int): Number of lattice sites in the chain.
@@ -251,15 +227,12 @@ def GPhiHeatmapData(N, phi_lin, level_i, level_j, V1=None, V2=None, V=None,
     - level_j (int): Index of the second energy level.
     - V1 (float or np.ndarray): Amplitude(s) of the on-site potential.
     - V2 (float or np.ndarray): Amplitude(s) of the hopping potential.
-    - V (float or np.ndarray): Unified potential array when V1 = V2.
-    - t (float): Hopping between neighboring sites (default is 1.0).
+    - V (float or np.ndarray): Unified potential array when V1=V2.
+    - t (float): Hopping term (default is 1.0).
     - theta (float): Phase offset parameter (default is 0.0).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is True).
-
-    Returns:
-    - G_matrix (np.ndarray, shape (n_rows, len(phi_lin)))
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
     if V is not None:
         V_arr = np.atleast_1d(np.asarray(V, dtype=float))
@@ -329,29 +302,25 @@ def GPhiHeatmapData(N, phi_lin, level_i, level_j, V1=None, V2=None, V=None,
 
     return G_matrix
 
-
 def IPRPhiHeatmapData(N, phi_lin, level_i, V1=None, V2=None, V=None,
                        t=1.0, theta=0.0, dparameter=0.3,
                        data_path='data', filename=None, save=True):
     """
-    Generates heatmap data for the dIPR as a function of phason angle and potential strength(s).
+    Generates heatmap data for IPR/dIPR values as a function of phason angle and potential strength(s).
 
     Parameters:
     - N (int): Number of lattice sites in the chain.
     - phi_lin (np.ndarray): Array of phason angles (phi) to iterate over.
-    - level_i (int): Index of the energy level.
+    - level_i (int): Index of the first energy level.
     - V1 (float or np.ndarray): Amplitude(s) of the on-site potential.
     - V2 (float or np.ndarray): Amplitude(s) of the hopping potential.
-    - V (float or np.ndarray): Unified potential array when V1 = V2.
-    - t (float): Hopping between neighboring sites (default is 1.0).
+    - V (float or np.ndarray): Unified potential array when V1=V2.
+    - t (float): Hopping term (default is 1.0).
     - theta (float): Phase offset parameter (default is 0.0).
     - dparameter (float): Parameter for the dIPR calculation (default is 0.3).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is True).
-
-    Returns:
-    - IPR_matrix (np.ndarray, shape (n_rows, len(phi_lin)))
+    - save (bool): Flag to determine whether to save the output data to a file (default is False).
     """
     if V is not None:
         V_arr = np.atleast_1d(np.asarray(V, dtype=float))
@@ -420,12 +389,7 @@ def IPRPhiHeatmapData(N, phi_lin, level_i, V1=None, V2=None, V=None,
 
 
 def compute_theta_phi_heatmap(N, V1, V2, lvl_i, lvl_j, t=1, N_THETA=200, N_PHI=200, DPARAMETER=0.3):
-    """
-    Computes G and dIPR on a (theta, phi) grid, both over [0, 2pi].
 
-    Returns:
-    - G_matrix, dIPR_matrix (np.ndarray, shape (N_THETA, N_PHI)); dIPR is taken for level lvl_j
-    """
     phi_lin = np.linspace(0, 2 * np.pi, N_PHI)
     theta_lin = np.linspace(0, 2 * np.pi, N_THETA)
 
@@ -455,12 +419,12 @@ def compute_theta_phi_heatmap(N, V1, V2, lvl_i, lvl_j, t=1, N_THETA=200, N_PHI=2
     return G_matrix, dIPR_matrix
 
 
-# ----------------------------------------------------------------------
-# G_min(V1, V2) and phi_0(V1, V2) maps
-# ----------------------------------------------------------------------
+# ======================================================================
+#  G_min(V1, V2) and phi_0(V1, V2) maps
+# ======================================================================
 def _gap_at_phi(phi: float, N: int, V1: float, V2: float, theta: float,
                 t: float, level_i: int) -> float:
-    """Gap |E[level_i+1] - E[level_i]| / t at a single phason angle phi (eigenvalues only)."""
+    """|E[level_i+1] - E[level_i]| / t at a single phason angle phi (eigenvalues only)."""
     H = aah.AAH_chain(N=N, t=t, V1=V1, V2=V2, theta=theta, phi=phi).Hamiltonian()
     E = np.linalg.eigvalsh(H)
     return abs(E[level_i + 1] - E[level_i]) / t
@@ -469,11 +433,11 @@ def _gap_at_phi(phi: float, N: int, V1: float, V2: float, theta: float,
 def GminPhi0(N: int, V1: float, V2: float, level_i: int, theta: float = 0.0,
              t: float = 1.0, n_phi: int = 360, flat_tol: float = 1e-9) -> tuple[float, float]:
     """
-    Calculates the minimal gap G_min between levels level_i and level_i+1 over the
-    phason angle phi, and the angle phi_0 at which it occurs.
+    Minimal gap G_min between levels level_i and level_i+1 over the phason angle phi,
+    and the phason angle phi_0 at which it occurs.
 
     A coarse scan over n_phi values of phi in [0, 2pi] locates the minimum, which is
-    then refined with a bounded 1D minimization in the two neighbouring grid cells
+    then refined with a bounded 1D minimization inside the two neighbouring grid cells
     (the Hamiltonian is 2pi-periodic in phi, so the search wraps around the edges).
 
     Parameters:
@@ -481,9 +445,9 @@ def GminPhi0(N: int, V1: float, V2: float, level_i: int, theta: float = 0.0,
     - V1 (float): Amplitude of the on-site potential.
     - V2 (float): Amplitude of the hopping potential.
     - level_i (int): Index of the lower level; the gap is taken to level_i + 1.
-    - theta (float): Phase offset parameter (default is 0.0).
+    - theta (float): Phason offset (default is 0.0).
     - t (float): Hopping between neighboring sites (default is 1).
-    - n_phi (int): Number of points of the coarse phi scan (default is 360).
+    - n_phi (int): Number of points of the coarse phi scan.
     - flat_tol (float): If G varies by less than this over phi (e.g. V1 = V2 = 0),
                         phi_0 is undefined and returned as NaN.
 
@@ -521,7 +485,6 @@ def _gmin_row(args):
 
 
 def GminMapFilename(N: int, theta: float, level_i: int) -> str:
-    """Default file name of the G_min / phi_0 map."""
     return f"GminPhi0Map_N{N}_theta{theta}_lvl{level_i}.npz"
 
 
@@ -533,21 +496,20 @@ def GminPhi0Map(N: int, level_i: int, V1_lin: np.ndarray, V2_lin: np.ndarray,
     """
     Computes G_min and phi_0 on a (V1, V2) grid (see GminPhi0).
 
+    Matrices have shape (len(V2_lin), len(V1_lin)): rows = V2, columns = V1.
+    phi_0 is stored in units of pi.
+
     Parameters:
     - N (int): Number of lattice sites in the chain.
     - level_i (int): Index of the lower level; the gap is taken to level_i + 1.
-    - V1_lin (np.ndarray): Grid of V1 values.
-    - V2_lin (np.ndarray): Grid of V2 values.
-    - theta (float): Phase offset parameter (default is 0.0).
+    - V1_lin, V2_lin (np.ndarray): Grids of V1 and V2 values.
+    - theta (float): Phason offset (default is 0.0).
     - t (float): Hopping between neighboring sites (default is 1).
-    - n_phi (int): Number of points of the coarse phi scan per (V1, V2) point (default is 360).
+    - n_phi (int): Number of points of the coarse phi scan per (V1, V2) point.
     - n_workers (int): Number of processes (default: all CPUs; 1 = serial).
     - data_path (str): Folder directory name for saving data (default is "data").
     - filename (str): Custom file name for the saved output (optional).
-    - save (bool): Whether to save the output data to a file (default is True).
-
-    Returns:
-    - Gmin_matrix, phi0_matrix (np.ndarray, shape (len(V2_lin), len(V1_lin)); phi_0 in units of pi)
+    - save (bool): Whether to save the output data to a .npz file.
     """
     V1_lin = np.asarray(V1_lin, dtype=float)
     V2_lin = np.asarray(V2_lin, dtype=float)
@@ -589,20 +551,19 @@ def GminPhi0Map(N: int, level_i: int, V1_lin: np.ndarray, V2_lin: np.ndarray,
     return Gmin_matrix, phi0_matrix
 
 
-# ----------------------------------------------------------------------
-# Number of local minima of G(phi) / maxima of E_level_i(phi)
-# ----------------------------------------------------------------------
+# ======================================================================
+#  Number of local minima of G(phi) / maxima of E_lvl_i(phi) maps
+# ======================================================================
 def LevelsVsPhi(N: int, V1: float, V2: float, level_i: int, phi_lin: np.ndarray,
                 theta: float = 0.0, t: float = 1.0, chunk: int = 64
                 ) -> tuple[np.ndarray, np.ndarray]:
     """
-    Calculates E[level_i](phi) and E[level_i+1](phi) for all phi in phi_lin (vectorized).
-
-    Builds the same Hamiltonian as AAH_chain.Hamiltonian(), but diagonalizes
-    `chunk` angles at once and computes eigenvalues only.
+    Fast (vectorized) E[level_i](phi) and E[level_i+1](phi) for all phi in phi_lin.
+    Builds exactly the same Hamiltonian as AAH_chain.Hamiltonian(), but diagonalizes
+    many phi at once and computes eigenvalues only.
 
     Returns:
-    - E_i, E_next (np.ndarray, length len(phi_lin))
+    - E_i, E_next: arrays of length len(phi_lin)
     """
     Q = aah.tau
     phi_lin = np.asarray(phi_lin, dtype=float)
@@ -631,8 +592,7 @@ def _count_prominent(y: np.ndarray, prom_frac: float, flat_tol: float = 1e-9) ->
     rng = np.ptp(y)
     if rng < flat_tol:
         return 0
-    # Three periods handle the wrap-around; only peaks in the middle one are counted
-    peaks, _ = find_peaks(np.tile(y, 3), prominence=prom_frac * rng)
+    peaks, _ = find_peaks(np.tile(y, 3), prominence=prom_frac * rng)   # 3 periods: handles wrap-around
     return int(np.sum((peaks >= n) & (peaks < 2 * n)))
 
 
@@ -640,15 +600,13 @@ def CountPoint(N: int, V1: float, V2: float, level_i: int, theta: float = 0.0,
                t: float = 1.0, n_phi: int = 360, prom_frac: float = 0.05
                ) -> tuple[int, int]:
     """
-    Counts, for one (V1, V2), the significant local minima of the gap
-    G(phi) = E[level_i+1] - E[level_i] and the significant maxima of E[level_i](phi)
-    over the periodic phason angle phi in [0, 2pi).
-
-    "Significant" means a prominence larger than prom_frac times the range of the
-    function, which ignores tiny wiggles.
+    For one (V1, V2): number of significant local minima of the gap
+    G(phi) = E[level_i+1] - E[level_i], and of significant maxima of E[level_i](phi),
+    over the periodic phason angle phi in [0, 2pi). "Significant" = prominence larger
+    than prom_frac times the range of the function (ignores tiny wiggles).
 
     Returns:
-    - n_minima_of_G (int), n_maxima_of_E (int)
+    - (n_minima_of_G, n_maxima_of_E)
     """
     phi_lin = np.linspace(0, 2 * np.pi, n_phi, endpoint=False)
     E_i, E_next = LevelsVsPhi(N, V1, V2, level_i, phi_lin, theta=theta, t=t)
@@ -667,32 +625,27 @@ def _count_row(args):
 
 
 def CountMapFilename(N: int, theta: float, level_i: int) -> str:
-    """Default file name of the extrema count map."""
     return f"ExtremaCountMap_N{N}_theta{theta}_lvl{level_i}.npz"
 
 
-# ----------------------------------------------------------------------
-# Number of gap closings between level_i and level_i+1
-# ----------------------------------------------------------------------
+# ======================================================================
+#  Number of gap closings between level_i and level_i+1
+# ======================================================================
 def CountGapClosings(N: int, V1: float, V2: float, level_i: int, theta: float = 0.0,
                      t: float = 1.0, n_phi: int = 360, gap_tol: float = 1e-3) -> int:
     """
-    Counts the phason angles phi in [0, 2pi) at which the gap
+    Number of phason angles phi in [0, 2pi) at which the gap
     G(phi) = (E[level_i+1] - E[level_i]) / t closes, i.e. G has a local minimum
-    below gap_tol.
+    with G < gap_tol.
 
-    Algorithm:
-    1. Sample G on a periodic grid of n_phi points; every sampled local minimum
+    1. G is sampled on a periodic grid of n_phi points; every sampled local minimum
        is a candidate.
-    2. Discard candidates whose sampled value is too large to hide a closing. A closing
-       is a cusp, so the sampled value can exceed the true minimum by at most about
-       (V1 + 2*V2) * dphi, since |dE/dphi| <= ||dH/dphi|| <= |V1| + 2|V2|.
-    3. Refine each remaining candidate with a bounded 1D minimization in the two
-       neighbouring grid cells, and keep it if the refined minimum is below gap_tol.
-    4. Count candidates that converge to the same phi only once.
-
-    Returns:
-    - Number of gap closings (int)
+    2. Candidates whose sampled value is too large to hide a closing are discarded
+       (a closing is a cusp, so the sampled value can exceed the true minimum by at most
+       about (V1 + 2*V2) * dphi, since |dE/dphi| <= ||dH/dphi|| <= |V1| + 2|V2|).
+    3. Each remaining candidate is refined with a bounded 1D minimization of G in the
+       two neighbouring grid cells, and counted if the refined minimum is < gap_tol.
+    4. Candidates that converge to the same phi are counted once.
     """
     phi_lin = np.linspace(0, 2 * np.pi, n_phi, endpoint=False)
     dphi = phi_lin[1] - phi_lin[0]
@@ -711,7 +664,7 @@ def CountGapClosings(N: int, V1: float, V2: float, level_i: int, theta: float = 
         if g_ref < gap_tol:
             closings.append(phi_ref % (2 * np.pi))
 
-    # Merge duplicates, using the periodic distance
+    # merge duplicates (periodic distance)
     closings.sort()
     merged = []
     for c in closings:
@@ -732,5 +685,166 @@ def _closing_row(args):
 
 
 def ClosingMapFilename(N: int, theta: float, level_i: int) -> str:
-    """Default file name of the gap-closing count map."""
     return f"GapClosingCountMap_N{N}_theta{theta}_lvl{level_i}.npz"
+
+
+# ======================================================================
+#  (theta, phi) maps of the gap G and of the dIPR
+# ======================================================================
+class Cancelled(Exception):
+    """Raised by the map calculations when the cancel event is set (e.g. by a GUI)."""
+
+
+def _theta_row(args):
+    """
+    Worker: one row (fixed theta, all phi) of the G and dIPR maps.
+    One diagonalization per (theta, phi) point gives both quantities.
+    """
+    row, theta, phi_lin, N, V1, V2, t, level_i, level_j, dparameter = args
+    G = np.zeros(len(phi_lin))
+    D = np.zeros(len(phi_lin))
+    for col, phi in enumerate(phi_lin):
+        chain = aah.AAH_chain(N=N, t=t, V1=V1, V2=V2, theta=theta, phi=phi)
+        E, _ = chain.diagonalize()
+        G[col] = abs(E[level_j] - E[level_i]) / t
+        D[col] = chain.dIPR(dparameter=dparameter)[level_j]
+    return row, G, D
+
+
+def ThetaPhiMapFilename(N: int, V1: float, V2: float, level_i: int, level_j: int,
+                        t: float = 1.0, dparameter: float = 0.3,
+                        n_theta: int = 200, n_phi: int = 200) -> str:
+    """File name used by ThetaPhiMap; it encodes every parameter of the calculation."""
+    return (f"G_dIPR_ThetaPhi_N{N}_V1{V1:g}_V2{V2:g}_t{t:g}_lvl{level_i}-{level_j}"
+            f"_d{dparameter:g}_{n_theta}x{n_phi}.npz")
+
+
+def LoadThetaPhiMap(path: str, N: int, V1: float, V2: float, level_i: int, level_j: int,
+                    t: float = 1.0, dparameter: float = 0.3,
+                    n_theta: int = 200, n_phi: int = 200):
+    """
+    Loads a saved (theta, phi) map and checks that it was calculated for exactly the
+    given parameters.
+
+    Returns:
+    - dict(G_matrix, dIPR_matrix, phi_lin, theta_lin) if the file exists and matches,
+      otherwise None (missing, unreadable or for different parameters).
+    """
+    if not os.path.exists(path):
+        return None
+    try:
+        d = np.load(path)
+        if (d["G_matrix"].shape == (n_theta, n_phi)
+                and d["dIPR_matrix"].shape == (n_theta, n_phi)
+                and int(d["N"]) == N and float(d["V1"]) == V1 and float(d["V2"]) == V2
+                and float(d["t"]) == t and int(d["level_i"]) == level_i
+                and int(d["level_j"]) == level_j and float(d["dparameter"]) == dparameter):
+            return dict(G_matrix=d["G_matrix"], dIPR_matrix=d["dIPR_matrix"],
+                        phi_lin=d["phi_lin"], theta_lin=d["theta_lin"])
+    except Exception:
+        pass
+    return None
+
+
+def ThetaPhiMap(N: int, V1: float, V2: float, level_i: int, level_j: int,
+                t: float = 1.0, dparameter: float = 0.3,
+                n_phi: int = 200, n_theta: int = 200,
+                n_workers: int = None, data_path: str = "data", filename: str = None,
+                save: bool = True, force: bool = False,
+                progress_cb=None, cancel_evt=None, mp_context=None) -> dict:
+    """
+    G(theta, phi) = |E[level_j] - E[level_i]| / t and dIPR(theta, phi) of the state
+    level_j, on a grid of the phason offset theta and the phason angle phi, both in
+    [0, 2pi] (end points included).
+
+    Matrices have shape (n_theta, n_phi): rows = theta, columns = phi. The calculation is
+    parallelised over rows of theta. With save=True the result is written to
+    data_path/filename (same keys as the files of the data notebook), and if a file made
+    for exactly the same parameters already exists it is loaded instead of recomputed
+    (unless force=True).
+
+    Parameters:
+    - N (int): Number of lattice sites in the chain.
+    - V1, V2 (float): Amplitudes of the on-site / hopping modulation.
+    - level_i, level_j (int): Levels whose gap is G; the dIPR is taken for level_j.
+    - t (float): Hopping between neighboring sites (default is 1).
+    - dparameter (float): Parameter for the dIPR calculation (default is 0.3).
+    - n_phi, n_theta (int): Number of grid points along phi and theta.
+    - n_workers (int): Number of processes (default: all CPUs; 1 = serial).
+    - data_path (str): Folder directory name for saving data (default is "data").
+    - filename (str): Custom file name (default: ThetaPhiMapFilename(...)).
+    - save (bool): Whether to save the result (and to look for a saved one).
+    - force (bool): Recalculate even if a matching saved file exists.
+    - progress_cb (callable): Called as progress_cb(done_rows, total_rows) after each row.
+    - cancel_evt (threading.Event): If set during the calculation, Cancelled is raised.
+    - mp_context: multiprocessing context for the worker processes (e.g.
+                  multiprocessing.get_context("spawn"), safer in a process with Tk loaded).
+
+    Returns:
+    - dict(G_matrix, dIPR_matrix, phi_lin, theta_lin, cached) where cached is True if the
+      result was loaded from a file.
+    """
+    if filename is None:
+        filename = ThetaPhiMapFilename(N, V1, V2, level_i, level_j, t, dparameter,
+                                       n_theta, n_phi)
+    full_path = os.path.join(data_path, filename) if data_path else filename
+
+    if save and not force:
+        loaded = LoadThetaPhiMap(full_path, N, V1, V2, level_i, level_j, t, dparameter,
+                                 n_theta, n_phi)
+        if loaded is not None:
+            loaded["cached"] = True
+            return loaded
+
+    phi_lin = np.linspace(0, 2 * np.pi, n_phi)
+    theta_lin = np.linspace(0, 2 * np.pi, n_theta)
+    G_matrix = np.zeros((n_theta, n_phi))
+    dIPR_matrix = np.zeros_like(G_matrix)
+    jobs = [(r, th, phi_lin, N, V1, V2, t, level_i, level_j, dparameter)
+            for r, th in enumerate(theta_lin)]
+
+    if n_workers is None:
+        n_workers = os.cpu_count() or 1
+
+    def _check_cancel():
+        if cancel_evt is not None and cancel_evt.is_set():
+            raise Cancelled()
+
+    done = 0
+    if n_workers == 1:
+        for job in tqdm.tqdm(jobs, desc="theta-phi map", unit="row", disable=progress_cb is not None):
+            _check_cancel()
+            r, g, d = _theta_row(job)
+            G_matrix[r], dIPR_matrix[r] = g, d
+            done += 1
+            if progress_cb is not None:
+                progress_cb(done, len(jobs))
+    else:
+        with ProcessPoolExecutor(max_workers=n_workers, mp_context=mp_context) as ex:
+            futures = [ex.submit(_theta_row, job) for job in jobs]
+            for f in tqdm.tqdm(as_completed(futures), total=len(futures),
+                               desc="theta-phi map", unit="row", disable=progress_cb is not None):
+                if cancel_evt is not None and cancel_evt.is_set():
+                    for g in futures:
+                        g.cancel()
+                    raise Cancelled()
+                r, g, d = f.result()
+                G_matrix[r], dIPR_matrix[r] = g, d
+                done += 1
+                if progress_cb is not None:
+                    progress_cb(done, len(jobs))
+
+    if save:
+        if data_path:
+            os.makedirs(data_path, exist_ok=True)
+        np.savez(
+            full_path,
+            G_matrix=G_matrix, dIPR_matrix=dIPR_matrix,
+            phi_lin=phi_lin, theta_lin=theta_lin,
+            N=N, V1=V1, V2=V2, t=t,
+            level_i=level_i, level_j=level_j, dparameter=dparameter,
+        )
+        print(f"Saved data to {full_path}")
+
+    return dict(G_matrix=G_matrix, dIPR_matrix=dIPR_matrix,
+                phi_lin=phi_lin, theta_lin=theta_lin, cached=False)
