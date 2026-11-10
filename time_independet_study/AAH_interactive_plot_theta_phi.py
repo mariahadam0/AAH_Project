@@ -22,7 +22,9 @@
 #     SAME folder as this script. All the calculations (building the chain,
 #     diagonalisation, G, dIPR, saving / loading of the data) are done by
 #     AAH_tid_functions.ThetaPhiMap (with ThetaPhiMapFilename, LoadThetaPhiMap
-#     and the worker _theta_row); this file contains only the user interface.
+#     and the worker _theta_row); the automatic winding-state selection uses
+#     AAH_tid_functions.AutoWindingLevel. This file contains only the user
+#     interface.
 #
 # HOW TO RUN
 #   Run this file with Python (e.g. `python AAH_theta_phi_plotter.py`) or with
@@ -43,6 +45,9 @@
 #                       see AAH_model.dIPR)
 #        N_PHI, N_THETA number of grid points along phi and theta (default 200)
 #        Data folder    folder where results are saved / loaded from
+#      Alternatively press "Auto-select winding state": it finds the winding
+#      state for the current N, V1, V2 and t (at the phason offset AUTO_THETA,
+#      see below) and fills in lvl_i for you.
 #   2. Optionally tick "Force recalculation" to ignore a saved file and
 #      recompute.
 #   3. Press "Calculate" (or the Enter key). The progress bar and status text
@@ -68,6 +73,8 @@
 # SETTINGS IN THE CODE (not in the UI)
 #   N_WORKERS      number of worker processes (None = all CPU cores)
 #   DEFAULT_FOLDER default value of the data folder field
+#   AUTO_THETA     phason offset theta used by "Auto-select winding state"
+#                  (theta is swept in this map, so it is not an input; default 0.0)
 #
 # NOTES
 #   - The calculation (AAH_tid_functions.ThetaPhiMap) is parallelised over rows
@@ -101,6 +108,7 @@ import AAH_tid_functions as aah_fun
 # ------------------------- settings (set here, not in the UI) ---------------
 N_WORKERS = None                       # None = all CPU cores
 DEFAULT_FOLDER = "data/theta_phi"      # default folder for saved results
+AUTO_THETA = 0.0                       # phason offset used by the winding-state auto-selection
 # ----------------------------------------------------------------------------
 
 Cancelled = aah_fun.Cancelled
@@ -156,7 +164,12 @@ class App(tk.Tk):
         self.lvl_label.grid(row=r, column=0, columnspan=2, sticky="w")
         self.vars["lvl_i"].trace_add("write", lambda *_: self._update_lvl_label())
         self._update_lvl_label()
-        r += 1
+
+        self.auto_btn = ttk.Button(panel, text="Auto-select winding state",
+                                   command=self.on_auto)
+        self.auto_btn.grid(row=r + 1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        r += 2
+
         ttk.Label(panel, text="Data folder").grid(row=r, column=0, columnspan=2,
                                                    sticky="w", pady=(8, 0))
         self.vars["folder"] = tk.StringVar(value=DEFAULT_FOLDER)
@@ -236,6 +249,38 @@ class App(tk.Tk):
         return p
 
     # ---------------- actions
+    def on_auto(self):
+        """Fill in lvl_i with the automatically found winding state."""
+        if self.busy:
+            return
+        try:
+            N = int(self.vars["N"].get())
+            V1 = float(self.vars["V1"].get())
+            V2 = float(self.vars["V2"].get())
+            t = float(self.vars["t"].get())
+        except ValueError:
+            messagebox.showerror("Invalid input", "N, V1, V2 and t must be valid numbers.")
+            return
+        if N < 4:
+            messagebox.showerror("Invalid input",
+                                 "N must be at least 4 for the winding-state search.")
+            return
+        if t == 0:
+            messagebox.showerror("Invalid input", "t must be non-zero.")
+            return
+        self.status.config(text="Searching for the winding state…", foreground="gray")
+        self.update_idletasks()
+        try:
+            lvl = aah_fun.AutoWindingLevel(N=N, V1=V1, V2=V2, theta=AUTO_THETA, t=t)
+        except Exception as e:
+            self.status.config(text="Error.", foreground="red")
+            messagebox.showerror("Auto-select failed", str(e))
+            return
+        self.vars["lvl_i"].set(str(lvl))
+        self.status.config(
+            text=f"Winding state found (θ = {AUTO_THETA:g}): lvl_i = {lvl}, "
+                 f"lvl_j = {lvl + 1}.", foreground="gray")
+
     def on_calculate(self):
         if self.busy:
             return
@@ -247,6 +292,7 @@ class App(tk.Tk):
         self.busy = True
         self.cancel_evt.clear()
         self.btn.config(state="disabled")
+        self.auto_btn.config(state="disabled")
         self.cancel_btn.config(state="normal")
         self.progress.config(value=0)
         self.status.config(text="Calculating… (may take a few minutes)", foreground="gray")
@@ -273,6 +319,7 @@ class App(tk.Tk):
     def _finish(self):
         self.busy = False
         self.btn.config(state="normal")
+        self.auto_btn.config(state="normal")
         self.cancel_btn.config(state="disabled")
 
     def _poll(self):
