@@ -18,6 +18,7 @@
 #   - Python 3 with tkinter, numpy and matplotlib installed
 #   - The following files in the SAME folder as this script:
 #       AAH_model.py, AAH_tools.py, AAH_tid_functions.py
+#     (AAH_tid_functions.py must contain AutoWindingLevel)
 #
 # HOW TO RUN
 #   Run this file with Python (e.g. `python <this_file>.py`) or with your IDE's
@@ -32,6 +33,8 @@
 #        lvl_i   index of the lower level of the pair (0 <= lvl_i <= N - 2);
 #                the partner level is lvl_j = lvl_i + 1 (shown under the fields)
 #        phi points   number of phi values in [0, 2*pi] (integer, >= 10)
+#      Alternatively press "Auto-select winding state": it finds the winding
+#      state for the current N, V1, V2 and theta and fills in lvl_i for you.
 #   2. Press "Calculate" (or the Enter key). The calculation runs in a
 #      background thread, so the window stays responsive; the status text under
 #      the button shows "Calculating...", "Done." or "Error.".
@@ -99,8 +102,8 @@ class App(tk.Tk):
         self.vars = {}
         fields = [
             ("N (chain length)", "N", "34"),
-            ("V1 (on-site)", "V1", "1.5"),
-            ("V2 (hopping)", "V2", "1.5"),
+            ("V1 (on-site)", "V1", "0.5"),
+            ("V2 (hopping)", "V2", "0.5"),
             ("θ (phason offset, rad)", "theta", "0.7"),
             ("Winding state number (lvl_i)", "lvl_i", "20"),
             ("φ points", "n_phi", "5000"),
@@ -116,11 +119,16 @@ class App(tk.Tk):
         self.vars["lvl_i"].trace_add("write", lambda *_: self._update_lvl_label())
         self._update_lvl_label()
 
+        self.auto_btn = ttk.Button(panel, text="Auto-select winding state",
+                                   command=self.on_auto)
+        self.auto_btn.grid(row=len(fields) + 1, column=0, columnspan=2, sticky="ew",
+                           pady=(8, 0))
+
         self.btn = ttk.Button(panel, text="Calculate", command=self.on_calculate)
-        self.btn.grid(row=len(fields) + 1, column=0, columnspan=2, sticky="ew", pady=(16, 4))
+        self.btn.grid(row=len(fields) + 2, column=0, columnspan=2, sticky="ew", pady=(16, 4))
         self.status = ttk.Label(panel, text="Set parameters and press Calculate.",
                                 wraplength=220, foreground="gray")
-        self.status.grid(row=len(fields) + 2, column=0, columnspan=2, sticky="w")
+        self.status.grid(row=len(fields) + 3, column=0, columnspan=2, sticky="w")
         self.bind("<Return>", lambda e: self.on_calculate())
 
         # ---------------- right: plots
@@ -171,6 +179,34 @@ class App(tk.Tk):
         return N, V1, V2, theta, lvl_i, lvl_j, n_phi
 
     # ---------------- actions
+    def on_auto(self):
+        """Fill in lvl_i with the automatically found winding state."""
+        if self.busy:
+            return
+        try:
+            N = int(self.vars["N"].get())
+            V1 = float(self.vars["V1"].get())
+            V2 = float(self.vars["V2"].get())
+            theta = float(self.vars["theta"].get())
+            if N < 4:
+                raise ValueError("N must be at least 4.")
+        except ValueError as e:
+            messagebox.showerror("Invalid input",
+                                 str(e) if "N must" in str(e)
+                                 else "N, V1, V2 and θ must be valid numbers.")
+            return
+        self.status.config(text="Searching for the winding state…", foreground="gray")
+        self.update_idletasks()
+        try:
+            lvl = aah_fun.AutoWindingLevel(N=N, V1=V1, V2=V2, theta=theta, t=1.0)
+        except Exception as e:
+            self.status.config(text="Error.", foreground="red")
+            messagebox.showerror("Auto-select failed", str(e))
+            return
+        self.vars["lvl_i"].set(str(lvl))
+        self.status.config(text=f"Winding state found: lvl_i = {lvl}, lvl_j = {lvl + 1}.",
+                           foreground="gray")
+
     def on_calculate(self):
         if self.busy:
             return
@@ -181,6 +217,7 @@ class App(tk.Tk):
             return
         self.busy = True
         self.btn.config(state="disabled")
+        self.auto_btn.config(state="disabled")
         self.status.config(text="Calculating…", foreground="gray")
 
         def work():
@@ -199,6 +236,7 @@ class App(tk.Tk):
             return
         self.busy = False
         self.btn.config(state="normal")
+        self.auto_btn.config(state="normal")
         if kind == "err":
             self.status.config(text="Error.", foreground="red")
             messagebox.showerror("Calculation failed", str(payload))
