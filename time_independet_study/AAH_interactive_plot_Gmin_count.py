@@ -19,7 +19,8 @@
 #   - Python 3 with tkinter, numpy, matplotlib and scipy installed
 #   - The following files in the SAME folder as this script:
 #       AAH_model.py, AAH_tools.py and the UPDATED AAH_tid_functions.py
-#       (it must contain CountGapClosings, _closing_row and ClosingMapFilename)
+#       (it must contain CountGapClosings, _closing_row, ClosingMapFilename
+#        and AutoWindingLevel)
 #
 # HOW TO RUN
 #   Run this file with Python (e.g. `python <this_file>.py`) or with your IDE's
@@ -32,6 +33,10 @@
 #        lvl_i   index of the lower level of the pair (0 <= lvl_i <= N - 2);
 #                the gap is taken between lvl_i and lvl_i + 1 (shown under the
 #                fields)
+#      Alternatively, enter a (V1, V2) point under "Auto-select winding state
+#      at (V1, V2)" and press "Auto-select winding state": the winding state
+#      of the chain at that point (for the current N and theta) is found and
+#      filled into lvl_i. The map itself still covers the whole (V1, V2) grid.
 #   2. Press "Calculate" (or the Enter key). The progress bar and status text
 #      show how many rows of the grid are done. "Cancel" aborts a running
 #      calculation.
@@ -89,6 +94,8 @@ GAP_TOL = 1e-3       # gap/t below this counts as "closed"
 T_HOP = 1.0
 N_WORKERS = None     # None = all CPU cores
 DATA_PATH = "data/gap_closings"   # results are cached here
+AUTO_V1_DEFAULT = "0.5"           # default (V1, V2) point for the auto-selection fields
+AUTO_V2_DEFAULT = "1.0"
 # ----------------------------------------------------------------------------
 
 
@@ -164,22 +171,37 @@ class App(tk.Tk):
         self.vars["lvl_i"].trace_add("write", lambda *_: self._update_lvl_label())
         self._update_lvl_label()
 
+        # ---- automatic selection of the winding state
+        ttk.Label(panel, text="Auto-select winding state at (V1, V2):",
+                  wraplength=230).grid(row=4, column=0, columnspan=2, sticky="w",
+                                       pady=(12, 0))
+        for r, (label, key, default) in enumerate(
+                [("V1", "auto_V1", AUTO_V1_DEFAULT), ("V2", "auto_V2", AUTO_V2_DEFAULT)],
+                start=5):
+            ttk.Label(panel, text=label).grid(row=r, column=0, sticky="w", pady=2)
+            v = tk.StringVar(value=default)
+            ttk.Entry(panel, textvariable=v, width=10).grid(row=r, column=1, padx=(8, 0))
+            self.vars[key] = v
+        self.auto_btn = ttk.Button(panel, text="Auto-select winding state",
+                                   command=self.on_auto)
+        self.auto_btn.grid(row=7, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+
         self.btn = ttk.Button(panel, text="Calculate", command=self.on_calculate)
-        self.btn.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(16, 4))
+        self.btn.grid(row=8, column=0, columnspan=2, sticky="ew", pady=(16, 4))
         self.cancel_btn = ttk.Button(panel, text="Cancel", command=self.on_cancel,
                                      state="disabled")
-        self.cancel_btn.grid(row=5, column=0, columnspan=2, sticky="ew")
+        self.cancel_btn.grid(row=9, column=0, columnspan=2, sticky="ew")
         self.progress = ttk.Progressbar(panel, mode="determinate", maximum=100)
-        self.progress.grid(row=6, column=0, columnspan=2, sticky="ew", pady=(10, 4))
+        self.progress.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(10, 4))
         self.status = ttk.Label(panel, text="Set parameters and press Calculate.",
                                 wraplength=230, foreground="gray")
-        self.status.grid(row=7, column=0, columnspan=2, sticky="w")
+        self.status.grid(row=11, column=0, columnspan=2, sticky="w")
 
         ttk.Label(panel, foreground="gray", wraplength=230,
                   text=f"Counts the φ values where the gap closes (gap/t < {GAP_TOL:g}). "
                        f"Grid: {N_V1}×{N_V2} points, V ∈ [{V_MIN}, {V_MAX}], "
                        f"{N_PHI} φ points. Set in the code."
-                  ).grid(row=8, column=0, columnspan=2, sticky="w", pady=(14, 0))
+                  ).grid(row=12, column=0, columnspan=2, sticky="w", pady=(14, 0))
         self.bind("<Return>", lambda e: self.on_calculate())
 
         # ---------------- right: plot
@@ -221,6 +243,35 @@ class App(tk.Tk):
         return N, theta, lvl_i
 
     # ---------------- actions
+    def on_auto(self):
+        """Fill in lvl_i with the winding state found at the chosen (V1, V2) point."""
+        if self.busy:
+            return
+        try:
+            N = int(self.vars["N"].get())
+            theta = float(self.vars["theta"].get())
+            V1 = float(self.vars["auto_V1"].get())
+            V2 = float(self.vars["auto_V2"].get())
+        except ValueError:
+            messagebox.showerror("Invalid input",
+                                 "N, θ and the auto-select V1, V2 must be valid numbers.")
+            return
+        if N < 4:
+            messagebox.showerror("Invalid input", "N must be at least 4.")
+            return
+        self.status.config(text="Searching for the winding state…", foreground="gray")
+        self.update_idletasks()
+        try:
+            lvl = aah_fun.AutoWindingLevel(N=N, V1=V1, V2=V2, theta=theta, t=T_HOP)
+        except Exception as e:
+            self.status.config(text="Error.", foreground="red")
+            messagebox.showerror("Auto-select failed", str(e))
+            return
+        self.vars["lvl_i"].set(str(lvl))
+        self.status.config(
+            text=f"Winding state at (V1, V2) = ({V1:g}, {V2:g}): "
+                 f"lvl_i = {lvl}, lvl_i + 1 = {lvl + 1}.", foreground="gray")
+
     def on_calculate(self):
         if self.busy:
             return
@@ -232,6 +283,7 @@ class App(tk.Tk):
         self.busy = True
         self.cancel_evt.clear()
         self.btn.config(state="disabled")
+        self.auto_btn.config(state="disabled")
         self.cancel_btn.config(state="normal")
         self.progress.config(value=0)
         self.status.config(text="Calculating…", foreground="gray")
@@ -258,6 +310,7 @@ class App(tk.Tk):
     def _finish(self):
         self.busy = False
         self.btn.config(state="normal")
+        self.auto_btn.config(state="normal")
         self.cancel_btn.config(state="disabled")
 
     def _poll(self):
