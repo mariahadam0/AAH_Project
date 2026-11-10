@@ -848,3 +848,34 @@ def ThetaPhiMap(N: int, V1: float, V2: float, level_i: int, level_j: int,
 
     return dict(G_matrix=G_matrix, dIPR_matrix=dIPR_matrix,
                 phi_lin=phi_lin, theta_lin=theta_lin, cached=False)
+
+#  Automatic selection of the winding state
+def AutoWindingLevel(N: int, V1: float, V2: float, theta: float = 0.0, t: float = 1.0,
+                     n_phi: int = 300, only_positive: bool = True) -> int:
+    """
+    Automatically selects the winding state, in the same way as the phason-angle
+    explorer ("Search winding state" button): the energy spectrum E(phi) is computed
+    on n_phi values of phi in [0, 2pi], AAH_tools.find_winding_states returns the two
+    levels with the largest winding gap, and the lower of them is lvl_i
+    (the partner level is lvl_i + 1).
+
+    Parameters:
+    - N (int): Number of lattice sites in the chain.
+    - V1 (float): Amplitude of the on-site potential.
+    - V2 (float): Amplitude of the hopping potential.
+    - theta (float): Phason offset (default is 0.0).
+    - t (float): Hopping between neighboring sites (default is 1).
+    - n_phi (int): Number of phi points used to find the winding gaps (default 300).
+    - only_positive (bool): Only consider states with positive mean energy (default True).
+
+    Returns:
+    - lvl_i (int): index of the lower level of the winding pair, 0 <= lvl_i <= N - 2.
+    """
+    phi_lin = np.linspace(0, 2 * np.pi, n_phi)
+    energies, angles = EnergyPhiSpectrum(N=N, V1=V1, V2=V2, phi_lin=phi_lin,
+                                         t=t, theta=theta, save=False)
+    states = aah_tools.find_winding_states(N=N, energies=energies, parameters=angles,
+                                           n_gaps=2, only_positive=only_positive)
+    if len(states) < 2:
+        raise ValueError("Could not find a winding pair for these parameters.")
+    return int(min(states))
